@@ -151,7 +151,28 @@ int main(int argc, char *argv[]) {
 
     pcap_pkthdr header;
     const u_char *p;
+    int pcap_i = 1;
+    int skip_to = -1;
+
     while ((p = pcap_next(handle, &header))) {
+      bool skip = skip_to > pcap_i;
+      if (!skip) {
+        char input[10]; // Input buffer up to 9 digits (+null terminator)
+        std::cin.getline(input, sizeof(input));
+
+        if (std::cin.fail()) {
+          std::cerr << "Error reading user input." << std::endl;
+          return 1;
+        }
+
+        // Skip leading whitespace (if any)
+        std::strtol(input, nullptr, 0); // Attempt conversion without storing result
+
+        if (isdigit(*input)) {
+          skip_to = std::strtol(input, nullptr, 10);
+        }
+      }
+
       if (start.tv_nsec == -1) {
         if (clock_gettime(CLOCK_MONOTONIC, &start) == -1) {
           std::cerr << "clock_gettime: " << strerror(errno) << std::endl;
@@ -259,6 +280,8 @@ int main(int argc, char *argv[]) {
         std::cerr << "sendto: " << strerror(errno) << std::endl;
         return 1;
       }
+
+      std::cout << pcap_i++ << ": Packet capture length: " << header.len << " bytes" << (skip ? " (Skipped)" : "") << std::endl;
     }
 
     pcap_close(handle);
